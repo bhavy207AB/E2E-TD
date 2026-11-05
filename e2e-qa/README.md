@@ -50,6 +50,12 @@ To activate:
 
 The `workflow_dispatch` inputs cover the TestDino-dispatched re-run (Latest / Another branch / custom picks).
 
+The workflow has two jobs:
+- `test` — single unsharded job (paths a + b above).
+- `test-sharded` — a 2-shard matrix; all shards share `TESTDINO_CI_RUN_ID` so TestDino merges them into
+  one run, and on a native re-run each shard narrows to **only its own shard's** previously-failed tests
+  (item 8's sharded case). Locally confirmed that two shards merge into a single run.
+
 ## Verify a run from the API (staging)
 
 The read API lives on `stg-api.testdino.com` (the MCP package hardcodes prod `api.testdino.com`).
@@ -68,6 +74,7 @@ curl -s -H "$H" "$BASE/api/mcp/$PROJ/list-testcase?by_testrun_id=<runId>&by_stat
 | --- | --- | --- |
 | 1 | Branch on the run | ✓ local branch `main` recorded (run inside the git repo) |
 | 2 | Missing-retry / flaky | ✓ run ends **Passed / Flaky**, not Incomplete |
+| 5 | Update notice / debug / offline | ✓ older-installed prints the notice (newer/equal/prerelease: none); `TESTDINO_DEBUG=1` shows `testdino:` lines (off: none); offline update check never delays (settles in 150 ms grace) or fails the run |
 | 7 | Test Controls decide exit | ✓ non-quarantined fail → exit 1; all-pass → exit 0; wrapper reads staging Test Controls. **Quarantine → exit 0 needs a quarantine rule on staging** (currently "0 rules") |
 | 8 | Re-run failed only | ✓ `testdino-e2e rerun` narrows to the run's failed tests (+ required setup). **GitHub-narrowed retry end-to-end needs real CI** |
 | 10 | Visual comparison | ✓ `toHaveScreenshot` comparison runs; a diff attaches expected/actual/diff |

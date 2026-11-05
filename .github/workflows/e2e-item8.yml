@@ -77,3 +77,40 @@ jobs:
           [ -n "$TD_EXCLUDE" ] && args+=(--exclude-ids "$TD_EXCLUDE")
           [ -n "$TD_TAGS" ] && args+=(--rerun-tags "$TD_TAGS")
           npx -p @testdino/e2e testdino-e2e rerun "${args[@]}"
+
+  # Sharded variant: item 8's "a sharded job runs only its own shard's failures".
+  # Every shard shares TESTDINO_CI_RUN_ID so TestDino merges them into one run.
+  # On a native re-run (GITHUB_RUN_ATTEMPT >= 2) each shard narrows to the tests
+  # that shard failed before — it does not re-run the whole shard.
+  test-sharded:
+    # Skip for a dispatched re-run from TestDino (a selection cannot run in a shard).
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.testdino_rerun_from }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    defaults:
+      run:
+        working-directory: e2e-qa
+    env:
+      TESTDINO_TOKEN: ${{ secrets.TESTDINO_TOKEN }}
+      TESTDINO_SERVER_URL: ${{ vars.TESTDINO_SERVER_URL || 'https://stg-reporter.testdino.com' }}
+      # Shared across all shards of this attempt, distinct from the unsharded job.
+      TESTDINO_CI_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-sharded
+      E2E_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run shard ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: npx -p @testdino/e2e testdino-e2e run -- --shard ${{ matrix.shard }}/${{ strategy.job-total }}
