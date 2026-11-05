@@ -45,16 +45,27 @@ To activate:
 2. Repo **Settings → Secrets and variables → Actions**: add secret `TESTDINO_TOKEN` (the staging token).
    Optionally add variable `TESTDINO_SERVER_URL` (defaults to `https://stg-reporter.testdino.com`).
 3. Push to any branch → the job runs the suite; the `failing` test fails (exit 1).
-4. **Re-run failed jobs** in GitHub (or **Re-run** in TestDino) → `GITHUB_RUN_ATTEMPT` becomes 2 and
-   `testdino-e2e run` runs **only** that job's previously-failed tests. The dashboard shows it as narrowed.
+4. Re-run. Two paths:
+   - **Started from TestDino** (Re-run button → `workflow_dispatch` with `testdino_rerun_from`) → the `test`
+     job runs `testdino-e2e rerun --from-run … --scope failed`, which runs **only the failed tests**.
+   - **Raw GitHub "Re-run failed jobs"** (not started from TestDino) → runs **in full** on purpose, printing
+     `TestDino re-run: running this job in full (this retry was not started from TestDino)`.
 
 The `workflow_dispatch` inputs cover the TestDino-dispatched re-run (Latest / Another branch / custom picks).
 
 The workflow has two jobs:
-- `test` — single unsharded job (paths a + b above).
+- `test` — single unsharded job (paths above).
 - `test-sharded` — a 2-shard matrix; all shards share `TESTDINO_CI_RUN_ID` so TestDino merges them into
-  one run, and on a native re-run each shard narrows to **only its own shard's** previously-failed tests
-  (item 8's sharded case). Locally confirmed that two shards merge into a single run.
+  one run, and on a TestDino-started native re-run each shard narrows to **only its own shard's** failures
+  (skipped for a dispatched `--from-run` re-run, since a selection can't run in a shard).
+
+### Verified on real GitHub CI (2026-11-05)
+- **Branch** on the run, **flaky** (2), **sharded merge** (Shard 1 + Shard 2 → one run) — ✓
+- **Quarantine → build exit 0** on CI (sharded jobs succeeded; log: "every failure is quarantined… exit 0") — ✓
+- **Narrowed re-run** (TestDino-dispatched): ran **4 of 16** tests (2 failed + 2 setup deps), recorded as a
+  `rerun` (`test_run_bfe38c32…`) — ✓
+- **Safe default**: a raw GitHub re-run ran **in full** with the "not started from TestDino" message — ✓
+- **Pending**: per-shard native narrowing via the dashboard **Re-run** button (needs TestDino↔GitHub integration).
 
 ## Verify a run from the API (staging)
 
@@ -76,16 +87,16 @@ curl -s -H "$H" "$BASE/api/mcp/$PROJ/list-testcase?by_testrun_id=<runId>&by_stat
 | 2 | Missing-retry / flaky | ✓ run ends **Passed / Flaky**, not Incomplete |
 | 4 | "Started by the author" | ✓ reporter logic: GitLab matches starter↔commit email (true→only trigger / false→"· name"); GitHub **PR uses the PR head commit, not the merge commit** (`resolveActorIsAuthor` + `collectGit`). UI rendering of the row/hover is the dashboard's |
 | 5 | Update notice / debug / offline | ✓ older-installed prints the notice (newer/equal/prerelease: none); `TESTDINO_DEBUG=1` shows `testdino:` lines (off: none); offline update check never delays (settles in 150 ms grace) or fails the run |
-| 7 | Test Controls decide exit | ✓ non-quarantined fail → exit 1; all-pass → exit 0; wrapper reads staging Test Controls. **Quarantine → exit 0 needs a quarantine rule on staging** (currently "0 rules") |
-| 8 | Re-run failed only | ✓ `testdino-e2e rerun` narrows to the run's failed tests (+ required setup). **GitHub-narrowed retry end-to-end needs real CI** |
+| 7 | Test Controls decide exit | ✓ **quarantined-only failure → exit 0, run still Failed**; non-quarantined failure → exit 1 (selective); mixed → exit 1; config error → exit 2 (never remapped); plain `e2e run` unchanged (exit 1). **Remaining: known-error rule → exit 0, and a critical test passed-on-retry → exit 1** (need those rules on staging) |
+| 8 | Re-run failed only | ✓ real GitHub CI: TestDino-dispatched re-run ran **4 of 16** (failed + setup deps), linked as a rerun; a raw GitHub re-run runs **in full** with a clear message (safe default). **Pending: per-shard native narrowing via the dashboard Re-run button (needs TestDino↔GitHub integration)** |
 | 10 | Visual comparison | ✓ `toHaveScreenshot` comparison runs; a diff attaches expected/actual/diff |
 | — | Plain `e2e run` unchanged | ✓ exit codes unchanged vs wrapper |
 
 ### Needs the staging dashboard or real CI (cannot be driven from the CLI here)
 
-- Item 1 on **GitLab / Azure / Jenkins / CircleCI / Bitbucket / Buildkite / CodeBuild / Harness** real runners, and PR columns.
+- Item 1 **PR column** — open a GitHub PR so the run shows the PR number/title/link (branch already verified on CI). CI is GitHub-only here.
 - Item 6 **stored selection** (`--selection <id>`) — the id comes from TestDino "Run automated tests".
-- Item 7 **quarantine → exit 0** and **known-error** / **critical** rules — configure Test Controls on staging first.
-- Item 8 **real GitHub Actions narrowed retry** from the Re-run button.
+- Item 7 **known-error → exit 0** and **critical passed-on-retry → exit 1** — add those Test Control rules on staging (quarantine → exit 0 already verified).
+- Item 8 **per-shard native narrowing** via the dashboard **Re-run** button (needs TestDino↔GitHub integration); dispatched narrowed re-run already verified on CI.
 - Item 9 **device MP4** — needs a real Android/iOS device recording.
-- Dashboard UI: the visual-comparison view, Re-run sheet, run-page settings.
+- Dashboard UI: the visual-comparison view, Re-run sheet, run-page settings, started-by-author row.
