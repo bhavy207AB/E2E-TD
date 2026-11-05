@@ -87,7 +87,7 @@ curl -s -H "$H" "$BASE/api/mcp/$PROJ/list-testcase?by_testrun_id=<runId>&by_stat
 | 2 | Missing-retry / flaky | ✓ run ends **Passed / Flaky**, not Incomplete |
 | 4 | "Started by the author" | ✓ reporter logic: GitLab matches starter↔commit email (true→only trigger / false→"· name"); GitHub **PR uses the PR head commit, not the merge commit** (`resolveActorIsAuthor` + `collectGit`). UI rendering of the row/hover is the dashboard's |
 | 5 | Update notice / debug / offline | ✓ older-installed prints the notice (newer/equal/prerelease: none); `TESTDINO_DEBUG=1` shows `testdino:` lines (off: none); offline update check never delays (settles in 150 ms grace) or fails the run |
-| 7 | Test Controls decide exit | ✓ **quarantined-only failure → exit 0, run still Failed**; non-quarantined failure → exit 1 (selective); mixed → exit 1; config error → exit 2 (never remapped); plain `e2e run` unchanged (exit 1). **Remaining: known-error rule → exit 0, and a critical test passed-on-retry → exit 1** (need those rules on staging) |
+| 7 | Test Controls decide exit | ✓ **all verified:** quarantined-only failure → exit 0 (run still Failed); **known-error → exit 0**; **critical passed-on-retry → exit 1**; non-quarantined failure → exit 1 (selective); mixed → exit 1; config error → exit 2 (never remapped); plain `e2e run` unchanged (exit 1) |
 | 8 | Re-run failed only | ✓ real GitHub CI: TestDino-dispatched re-run ran **4 of 16** (failed + setup deps), linked as a rerun; a raw GitHub re-run runs **in full** with a clear message (safe default). **Pending: per-shard native narrowing via the dashboard Re-run button (needs TestDino↔GitHub integration)** |
 | 10 | Visual comparison | ✓ `toHaveScreenshot` comparison runs; a diff attaches expected/actual/diff |
 | — | Plain `e2e run` unchanged | ✓ exit codes unchanged vs wrapper |
@@ -96,7 +96,6 @@ curl -s -H "$H" "$BASE/api/mcp/$PROJ/list-testcase?by_testrun_id=<runId>&by_stat
 
 - Item 1 **PR column** — open a GitHub PR so the run shows the PR number/title/link (branch already verified on CI). CI is GitHub-only here.
 - Item 6 **stored selection** (`--selection <id>`) — the id comes from TestDino "Run automated tests".
-- Item 7 **known-error → exit 0** and **critical passed-on-retry → exit 1** — add those Test Control rules on staging (quarantine → exit 0 already verified).
 - Item 8 **per-shard native narrowing** via the dashboard **Re-run** button (needs TestDino↔GitHub integration); dispatched narrowed re-run already verified on CI.
 - Item 9 **device MP4** — needs a real Android/iOS device recording.
 - Dashboard UI: the visual-comparison view, Re-run sheet, run-page settings, started-by-author row.
