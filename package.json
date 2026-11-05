@@ -1,0 +1,22 @@
+{
+  "name": "tdv2-1138-repro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reproduction for TDV2-1138: a sharded run whose jobs share a setup test is marked Incomplete even though every test passed and no result was lost.",
+  "scripts": {
+    "list": "playwright test --list",
+    "repro": "bash scripts/repro.sh",
+    "control:unsharded": "bash scripts/control-unsharded.sh",
+    "control:no-setup": "bash scripts/control-no-setup.sh",
+    "control:lose-result": "bash scripts/control-lose-result.sh",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@testdino/playwright": "^2.11.1",
+    "@types/node": "^24.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
+  }
+}
