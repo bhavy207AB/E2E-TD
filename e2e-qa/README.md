@@ -74,6 +74,7 @@ curl -s -H "$H" "$BASE/api/mcp/$PROJ/list-testcase?by_testrun_id=<runId>&by_stat
 | --- | --- | --- |
 | 1 | Branch on the run | ✓ local branch `main` recorded (run inside the git repo) |
 | 2 | Missing-retry / flaky | ✓ run ends **Passed / Flaky**, not Incomplete |
+| 4 | "Started by the author" | ✓ reporter logic: GitLab matches starter↔commit email (true→only trigger / false→"· name"); GitHub **PR uses the PR head commit, not the merge commit** (`resolveActorIsAuthor` + `collectGit`). UI rendering of the row/hover is the dashboard's |
 | 5 | Update notice / debug / offline | ✓ older-installed prints the notice (newer/equal/prerelease: none); `TESTDINO_DEBUG=1` shows `testdino:` lines (off: none); offline update check never delays (settles in 150 ms grace) or fails the run |
 | 7 | Test Controls decide exit | ✓ non-quarantined fail → exit 1; all-pass → exit 0; wrapper reads staging Test Controls. **Quarantine → exit 0 needs a quarantine rule on staging** (currently "0 rules") |
 | 8 | Re-run failed only | ✓ `testdino-e2e rerun` narrows to the run's failed tests (+ required setup). **GitHub-narrowed retry end-to-end needs real CI** |
