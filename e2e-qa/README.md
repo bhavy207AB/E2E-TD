@@ -83,7 +83,7 @@ curl -s -H "$H" "$BASE/api/mcp/$PROJ/list-testcase?by_testrun_id=<runId>&by_stat
 
 | Item | What | Status here |
 | --- | --- | --- |
-| 1 | Branch on the run | ✓ local branch `main` recorded (run inside the git repo) |
+| 1 | Branch + PR on the run | ✓ branch recorded (local `main`; CI `e2e-qa-item8`); **PR column verified on CI** — PR #1 number/title/link/target captured (`test_run_ced835f8…`) |
 | 2 | Missing-retry / flaky | ✓ run ends **Passed / Flaky**, not Incomplete |
 | 4 | "Started by the author" | ✓ reporter logic: GitLab matches starter↔commit email (true→only trigger / false→"· name"); GitHub **PR uses the PR head commit, not the merge commit** (`resolveActorIsAuthor` + `collectGit`). UI rendering of the row/hover is the dashboard's |
 | 5 | Update notice / debug / offline | ✓ older-installed prints the notice (newer/equal/prerelease: none); `TESTDINO_DEBUG=1` shows `testdino:` lines (off: none); offline update check never delays (settles in 150 ms grace) or fails the run |
@@ -94,7 +94,6 @@ curl -s -H "$H" "$BASE/api/mcp/$PROJ/list-testcase?by_testrun_id=<runId>&by_stat
 
 ### Needs the staging dashboard or real CI (cannot be driven from the CLI here)
 
-- Item 1 **PR column** — open a GitHub PR so the run shows the PR number/title/link (branch already verified on CI). CI is GitHub-only here.
 - Item 6 **stored selection** (`--selection <id>`) — the id comes from TestDino "Run automated tests".
 - Item 8 **per-shard native narrowing** via the dashboard **Re-run** button (needs TestDino↔GitHub integration); dispatched narrowed re-run already verified on CI.
 - Item 9 **device MP4** — needs a real Android/iOS device recording.
