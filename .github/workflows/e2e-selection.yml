@@ -6,6 +6,10 @@ name: e2e selection (item 6 — Run automated tests)
 # Needs secret TESTDINO_TOKEN (the QA project API key).
 
 on:
+  # push on this branch runs once so GitHub registers the workflow, which makes
+  # workflow_dispatch (TestDino "Run automated tests" / gh) usable on a non-default branch.
+  push:
+    branches: ['e2e-qa-item8']
   workflow_dispatch:
     inputs:
       testdino_selection: { description: 'TestDino selection id', required: false }
