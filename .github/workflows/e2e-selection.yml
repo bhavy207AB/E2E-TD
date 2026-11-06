@@ -1,0 +1,49 @@
+name: e2e selection (item 6 — Run automated tests)
+
+# Started by TestDino's "Run automated tests" with a selection id, or manually:
+#   gh workflow run e2e-selection.yml --ref <branch> -f testdino_selection=<id>
+# Runs exactly the selected tests via `testdino-e2e run --selection`.
+# Needs secret TESTDINO_TOKEN (the QA project API key).
+
+on:
+  # push on this branch runs once so GitHub registers the workflow, which makes
+  # workflow_dispatch (TestDino "Run automated tests" / gh) usable on a non-default branch.
+  push:
+    branches: ['e2e-qa-item8']
+  workflow_dispatch:
+    inputs:
+      testdino_selection: { description: 'TestDino selection id', required: false }
+
+concurrency:
+  group: e2e-selection-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: e2e-qa
+    env:
+      TESTDINO_TOKEN: ${{ secrets.TESTDINO_TOKEN }}
+      TESTDINO_SERVER_URL: ${{ vars.TESTDINO_SERVER_URL || 'https://stg-reporter.testdino.com' }}
+      E2E_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit
+      - name: Run tests
+        env:
+          TD_SELECTION: ${{ inputs.testdino_selection }}
+        shell: bash
+        run: |
+          args=()
+          if [ -n "$TD_SELECTION" ]; then
+            args+=(--selection "$TD_SELECTION")
+          fi
+          npx -p @testdino/e2e testdino-e2e run "${args[@]}"

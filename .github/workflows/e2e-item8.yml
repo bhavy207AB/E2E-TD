@@ -1,0 +1,115 @@
+name: e2e (TestDino item 8 — narrowed GitHub retry)
+
+# Item 8 of TDV2-1133: a GitHub CI re-run runs only the failed tests.
+#
+# Two paths, both handled by the single run step below:
+#   (a) Native re-run — click "Re-run failed jobs" in GitHub, or "Re-run" in
+#       TestDino (which triggers it). GITHUB_RUN_ATTEMPT becomes >= 2 and
+#       `testdino-e2e run` automatically narrows to the tests this job failed
+#       in the earlier attempt (sharded jobs narrow to their own shard).
+#   (b) Dispatched re-run from TestDino — "Latest commit / Another branch /
+#       custom picks" send workflow_dispatch inputs that call `testdino-e2e rerun`.
+#
+# Requirements in the GitHub repo:
+#   - Secret TESTDINO_TOKEN = the staging project token.
+#   - (Optional) Repo variable TESTDINO_SERVER_URL; defaults to staging below.
+#   - The e2e-qa/ project and testdino-e2e-1.1.0-rerun.tgz committed at the repo root.
+
+on:
+  # Manual only — avoids spawning CI on every push/PR. Trigger with
+  # `gh workflow run e2e-item8.yml --ref <branch>` or the TestDino Re-run button.
+  workflow_dispatch:
+    inputs:
+      testdino_rerun_from:    { description: 'TestDino run id to re-run from', required: false }
+      testdino_rerun_scope:   { description: 'failed | flaky | failed-and-flaky', required: false }
+      testdino_rerun_test_ids:    { description: 'Comma-separated test ids to run', required: false }
+      testdino_rerun_exclude_ids: { description: 'Comma-separated test ids to skip', required: false }
+      testdino_rerun_tags:    { description: 'Comma-separated tags to add to the re-run', required: false }
+
+# Keep each GitHub run's attempts in the same concurrency lane; never cancel a
+# re-run attempt of the same run.
+concurrency:
+  group: e2e-item8-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: e2e-qa
+    env:
+      TESTDINO_TOKEN: ${{ secrets.TESTDINO_TOKEN }}
+      TESTDINO_SERVER_URL: ${{ vars.TESTDINO_SERVER_URL || 'https://stg-reporter.testdino.com' }}
+      E2E_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run e2e tests (narrowed on native re-run; rerun on dispatch)
+        shell: bash
+        env:
+          TD_FROM: ${{ inputs.testdino_rerun_from }}
+          TD_SCOPE: ${{ inputs.testdino_rerun_scope }}
+          TD_IDS: ${{ inputs.testdino_rerun_test_ids }}
+          TD_EXCLUDE: ${{ inputs.testdino_rerun_exclude_ids }}
+          TD_TAGS: ${{ inputs.testdino_rerun_tags }}
+        run: |
+          if [ -z "$TD_FROM" ]; then
+            # Path (a): first attempt runs the suite; a native re-run (attempt >= 2)
+            # narrows to this job's previously-failed tests automatically.
+            npx -p @testdino/e2e testdino-e2e run
+            exit
+          fi
+          # Path (b): dispatched re-run from TestDino.
+          args=(--from-run "$TD_FROM" --scope "${TD_SCOPE:-failed}")
+          [ -n "$TD_IDS" ] && args+=(--test-ids "$TD_IDS")
+          [ -n "$TD_EXCLUDE" ] && args+=(--exclude-ids "$TD_EXCLUDE")
+          [ -n "$TD_TAGS" ] && args+=(--rerun-tags "$TD_TAGS")
+          npx -p @testdino/e2e testdino-e2e rerun "${args[@]}"
+
+  # Sharded variant: item 8's "a sharded job runs only its own shard's failures".
+  # Every shard shares TESTDINO_CI_RUN_ID so TestDino merges them into one run.
+  # On a native re-run (GITHUB_RUN_ATTEMPT >= 2) each shard narrows to the tests
+  # that shard failed before — it does not re-run the whole shard.
+  test-sharded:
+    # Skip for a dispatched re-run from TestDino (a selection cannot run in a shard).
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.testdino_rerun_from }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    defaults:
+      run:
+        working-directory: e2e-qa
+    env:
+      TESTDINO_TOKEN: ${{ secrets.TESTDINO_TOKEN }}
+      TESTDINO_SERVER_URL: ${{ vars.TESTDINO_SERVER_URL || 'https://stg-reporter.testdino.com' }}
+      # Shared across all shards of this attempt, distinct from the unsharded job.
+      TESTDINO_CI_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-sharded
+      E2E_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run shard ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: npx -p @testdino/e2e testdino-e2e run -- --shard ${{ matrix.shard }}/${{ strategy.job-total }}
