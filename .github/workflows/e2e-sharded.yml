@@ -7,8 +7,7 @@ name: e2e sharded (item 8 per-shard narrowing)
 # Needs secret TESTDINO_TOKEN; TestDino↔GitHub integration connected.
 
 on:
-  push:
-    branches: ['**']
+  # Manual only — trigger with `gh workflow run e2e-sharded.yml --ref <branch>`.
   workflow_dispatch:
 
 concurrency:
