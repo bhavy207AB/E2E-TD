@@ -16,7 +16,10 @@ name: e2e (TestDino item 8 — narrowed GitHub retry)
 #   - The e2e-qa/ project and testdino-e2e-1.1.0-rerun.tgz committed at the repo root.
 
 on:
-  # Manual only — avoids spawning CI on every push/PR. Trigger with
+  # PR trigger: exercises item 1 (PR column) + item 4 (started-by-author uses the
+  # PR head commit) on a real GitHub pull_request event.
+  pull_request:
+  # Manual too. Trigger with
   # `gh workflow run e2e-item8.yml --ref <branch>` or the TestDino Re-run button.
   workflow_dispatch:
     inputs:
