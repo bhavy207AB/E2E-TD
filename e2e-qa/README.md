@@ -41,7 +41,7 @@ npx -p @testdino/e2e testdino-e2e rerun --from-run <id> --scope failed   # re-ru
 Workflow: `.github/workflows/e2e-item8.yml` (at the repo root, where GitHub reads it; it runs in `e2e-qa/`).
 
 To activate:
-1. Push `e2e-qa/`, `.github/`, and `testdino-e2e-1.1.0-rerun.tgz` to the GitHub repo.
+1. Push `e2e-qa/` and `.github/` to the GitHub repo (`@testdino/e2e` installs from npm — no committed pack needed).
 2. Repo **Settings → Secrets and variables → Actions**: add secret `TESTDINO_TOKEN` (the staging token).
    Optionally add variable `TESTDINO_SERVER_URL` (defaults to `https://stg-reporter.testdino.com`).
 3. Push to any branch → the job runs the suite; the `failing` test fails (exit 1).
