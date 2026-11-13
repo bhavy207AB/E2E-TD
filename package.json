@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
-    "@testdino/playwright": "^2.11.1",
+    "@testdino/playwright": "^2.11.3",
     "@types/node": "^24.0.0"
   },
   "dependencies": {
